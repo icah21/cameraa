@@ -1,30 +1,21 @@
 # main.py
 import threading
 import time
-import camera
-import servo
+from camera import start_gui, get_last_detected_label
+from servo import rotate_based_on_label, cleanup
 
-def servo_loop():
+def monitor_servo():
     last_label = ""
     while True:
-        label = camera.get_last_detected_label()
-        if label != last_label and label in ["Criollo", "Forastero", "Trinitario"]:
-            servo.rotate_servo_based_on_label(label)
-            time.sleep(2)
-            servo.set_angle(0)  # Return to 0° after action
-            last_label = label
-        time.sleep(0.5)
+        current_label = get_last_detected_label()
+        if current_label != last_label and current_label in ["Criollo", "Forastero", "Trinitario"]:
+            rotate_based_on_label(current_label)
+            last_label = current_label
+        time.sleep(1)
 
 if __name__ == "__main__":
     try:
-        # Start servo loop in background
-        threading.Thread(target=servo_loop, daemon=True).start()
-
-        # Run GUI (must be in main thread)
-        camera.start_gui()
-
+        threading.Thread(target=monitor_servo, daemon=True).start()
+        start_gui()
     except KeyboardInterrupt:
-        print("Exiting...")
-
-    finally:
-        servo.cleanup()
+        cleanup()
