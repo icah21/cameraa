@@ -17,15 +17,14 @@ def servo_loop():
 
 if __name__ == "__main__":
     try:
-        t1 = threading.Thread(target=camera.start_gui)
-        t2 = threading.Thread(target=servo_loop)
+        # Start servo loop in background
+        threading.Thread(target=servo_loop, daemon=True).start()
 
-        t1.start()
-        t2.start()
+        # Run GUI (must be in main thread)
+        camera.start_gui()
 
-        t1.join()
-        t2.join()
     except KeyboardInterrupt:
         print("Exiting...")
+
     finally:
         servo.cleanup()
