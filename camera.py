@@ -1,3 +1,4 @@
+# camera.py
 import cv2
 import torch
 from ultralytics import YOLO
@@ -14,13 +15,12 @@ import sys
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} for inference")
 
-# ✅ Load custom model only (best.pt)
-model = YOLO("yolov8n.pt")
+# ✅ Load model
 model = YOLO("best.pt")
 
 # ✅ Class counter
 counts = {"Criollo": 0, "Forastero": 0, "Trinitario": 0}
-prediction_interval = 3  # Increased to 3 seconds
+prediction_interval = 3
 last_pred_time = 0
 last_predicted_frame = None
 predicting = False
@@ -28,8 +28,8 @@ prediction_lock = threading.Lock()
 detection_active = False
 camera_ready = False
 tk_image = None
+last_detected_label = ""  # For servo trigger
 
-# ✅ Ensure results folder exists
 os.makedirs("results", exist_ok=True)
 
 def save_frame_with_timestamp(frame, prefix="capture"):
@@ -75,7 +75,7 @@ def stop_detection():
     show_logo()
 
 def predict_and_update(frame):
-    global predicting, last_predicted_frame, last_pred_time
+    global predicting, last_predicted_frame, last_pred_time, last_detected_label
     with prediction_lock:
         if predicting:
             return
@@ -100,13 +100,14 @@ def predict_and_update(frame):
         trinitario_var.set(f"Trinitario: {counts['Trinitario']}")
         detected = max(counts, key=counts.get) if sum(counts.values()) else 'No beans'
         detected_type_var.set(f"Detected: {detected}")
+        last_detected_label = detected  # Update global label for servo
         last_predicted_frame = frame.copy()
         last_pred_time = time.time()
     except Exception as e:
         print(f"Prediction error: {e}")
     predicting = False
 
-frame_skip = 0  # Initialize frame skip variable
+frame_skip = 0
 
 def update_frame():
     global last_pred_time, camera_ready, tk_image, frame_skip
@@ -129,7 +130,7 @@ def update_frame():
         show_logo()
     root.after(10, update_frame)
 
-# ✅ GUI
+# ✅ GUI setup
 root = tk.Tk()
 root.title("Cacao Detection")
 root.geometry("680x400")
@@ -166,11 +167,16 @@ tk.Button(bottom_frame, text="Start Detecting", font=("Arial",10,"bold"), comman
 tk.Button(bottom_frame, text="Stop Detecting", font=("Arial",10), command=stop_detection,
           bg="#A52A2A", fg="white", relief="flat", padx=12, pady=6, width=14).grid(row=0,column=1,padx=5)
 
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-show_logo()
-root.update()
-update_frame()
-root.mainloop()
-cap.release()
+def start_gui():
+    global cap
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+    show_logo()
+    root.update()
+    update_frame()
+    root.mainloop()
+    cap.release()
+
+def get_last_detected_label():
+    return last_detected_label
