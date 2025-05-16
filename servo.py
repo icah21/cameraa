@@ -12,8 +12,8 @@ pwm.start(0)
 
 angle_map = {
     "Forastero": 90,
-    "Criollo": 180,
-    "Trinitario": 0
+    "Criollo": 135,
+    "Trinitario": 45
 }
 
 def set_angle(angle):
